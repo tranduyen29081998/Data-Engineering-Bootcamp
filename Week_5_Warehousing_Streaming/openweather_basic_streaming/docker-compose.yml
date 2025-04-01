@@ -1,0 +1,62 @@
+version: "3.8"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    networks:
+      - kafka_network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./kafka_data:/var/lib/kafka
+      - ./kafka_logs:/var/log/kafka
+    networks:
+      - kafka_network
+
+  consumer:
+    build: .
+    container_name: consumer
+    depends_on:
+      - kafka
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/config/gcs_config.json
+    env_file:
+      - .env
+    volumes:
+      - ./config/gcs_config.json:/app/config/gcs_config.json
+    networks:
+      - kafka_network
+    command: ["sh", "-c", "sleep 10 && python /app/consumer.py"]
+    restart: always
+
+  producer:
+    build: .
+    container_name: producer
+    depends_on:
+      - kafka
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+    networks:
+      - kafka_network
+    command: ["sh", "-c", "sleep 10 && python /app/producer.py"]
+    restart: always
+networks:
+  kafka_network:

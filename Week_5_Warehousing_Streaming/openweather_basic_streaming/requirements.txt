@@ -1,0 +1,6 @@
+pandas
+kafka-python
+google-cloud-bigquery
+google-auth
+pandas-gbq
+pyarrow
